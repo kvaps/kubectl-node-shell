@@ -4,9 +4,15 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
+if [ $(uname) = "Linux" ]; then
+  UUID="$(uuidgen)"
+elif [ $(uname) = "Darwin" ]; then
+  UUID="$(uuidgen | tr "[:upper:]" "[:lower:]")"
+fi
+
 NODE="$1"
 IMAGE="alpine"
-POD="nsenter-$(uuidgen | cut -d- -f1)"
+POD="nsenter-$(echo $UUID | cut -d- -f1)"
 NAMESPACE=""
 
 # Check the node
