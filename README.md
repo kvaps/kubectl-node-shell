@@ -1,17 +1,20 @@
-# kubectl-enter
+# kubectl node-shell
+*(formerly known as **kubectl-enter**)*
 
-Tiny plugin for getting shell into the node.
+Start a root shell in the node's host OS running.
 
 ## Installation
 
 ```
-curl -LO https://github.com/kvaps/kubectl-enter/raw/master/kubectl-enter
-chmod +x ./kubectl-enter
-sudo mv ./kubectl-enter /usr/local/bin/kubectl-enter
+curl -LO https://github.com/kvaps/kubectl-node-shell/raw/master/kubectl-node_shell
+chmod +x ./kubectl-node_shell
+sudo mv ./kubectl-node-shell /usr/local/bin/kubectl-node_shell
 ```
 
 ## Usage
 
 ```
-kubectl enter <node>
+kubectl node-shell <node>
 ```
+
+*You need to be able to start privileged containers for that.*
