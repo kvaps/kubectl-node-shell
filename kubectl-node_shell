@@ -1,4 +1,31 @@
 #!/bin/sh
+
+POSITIONAL=()
+CONTEXT=""
+KUBECOFIG=""
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    --context)
+    CONTEXT="--context $2"
+    shift
+    shift
+    ;;
+    --kubeconfig)
+    KUBECONFIG="--kubconfig $2"
+    shift
+    shift
+    ;;
+    *)   
+    POSITIONAL+=("$1") # save it in an array for later
+    shift # past argument
+    ;;
+esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
 if [ -z "$1" ]; then
   echo "Please specify node name"
   exit 1
@@ -36,4 +63,4 @@ EOT
 )"
 
 echo "spawning \"$POD\" on \"$NODE\""
-kubectl run --namespace "$NAMESPACE" --rm --image alpine --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD"
+kubectl run --namespace "$NAMESPACE" --rm --image alpine --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD" $CONTEXT $KUBECONFIG
