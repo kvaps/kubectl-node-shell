@@ -6,7 +6,7 @@ fi
 
 NODE="$1"
 IMAGE="alpine"
-POD="nsenter-$(env LC_CTYPE=C tr -dc a-z0-9 < /dev/urandom | head -c 6)"
+9 POD="nsenter-$(env LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 6)"
 NAMESPACE=""
 
 # Check the node
