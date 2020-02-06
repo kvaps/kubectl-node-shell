@@ -1,18 +1,48 @@
 #!/bin/sh
-if [ -z "$1" ]; then
+
+CONTEXT=""
+KUBECONFIG=""
+NODE=""
+NAMESPACE=""
+while [ $# -gt 0 ]; do
+  key="$1"
+
+  case $key in
+  --context)
+    CONTEXT="--context $2"
+    shift
+    shift
+    ;;
+  --kubeconfig)
+    KUBECONFIG="--kubconfig $2"
+    shift
+    shift
+    ;;
+  -n | --namespace)
+    NAMESPACE="--namespace $2"
+    shift
+    shift
+    ;;
+  *)
+    NODE="$1"
+    shift
+    ;;
+  esac
+done
+
+if [ -z "$NODE" ]; then
   echo "Please specify node name"
   exit 1
 fi
 
-NODE="$1"
 IMAGE="docker.io/library/alpine"
 POD="nsenter-$(env LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 6)"
-NAMESPACE=""
 
 # Check the node
-kubectl get node "$NODE" >/dev/null || exit 1
+kubectl get node "$NODE" $CONTEXT $KUBECONFIG >/dev/null || exit 1
 
-OVERRIDES="$(cat <<EOT
+OVERRIDES="$(
+  cat <<EOT
 {
   "spec": {
     "nodeName": "$NODE",
@@ -36,4 +66,4 @@ EOT
 )"
 
 echo "spawning \"$POD\" on \"$NODE\""
-kubectl run --namespace "$NAMESPACE" --rm --image "$IMAGE" --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD"
+kubectl run --rm --image "$IMAGE" --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD" $CONTEXT $KUBECONFIG $NAMESPACE
