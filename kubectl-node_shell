@@ -5,7 +5,7 @@ if [ -z "$1" ]; then
 fi
 
 NODE="$1"
-IMAGE="alpine"
+IMAGE="docker.io/library/alpine"
 POD="nsenter-$(env LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 6)"
 NAMESPACE=""
 
@@ -36,4 +36,4 @@ EOT
 )"
 
 echo "spawning \"$POD\" on \"$NODE\""
-kubectl run --namespace "$NAMESPACE" --rm --image alpine --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD"
+kubectl run --namespace "$NAMESPACE" --rm --image "$IMAGE" --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD"
