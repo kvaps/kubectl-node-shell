@@ -1,45 +1,48 @@
 #!/bin/sh
 
-POSITIONAL=()
 CONTEXT=""
-KUBECOFIG=""
-while [[ $# -gt 0 ]]
-do
-key="$1"
+KUBECONFIG=""
+NODE=""
+NAMESPACE=""
+while [ $# -gt 0 ]; do
+  key="$1"
 
-case $key in
-    --context)
+  case $key in
+  --context)
     CONTEXT="--context $2"
     shift
     shift
     ;;
-    --kubeconfig)
+  --kubeconfig)
     KUBECONFIG="--kubconfig $2"
     shift
     shift
     ;;
-    *)   
-    POSITIONAL+=("$1") # save it in an array for later
-    shift # past argument
+  -n | --namespace)
+    NAMESPACE="--namespace $2"
+    shift
+    shift
     ;;
-esac
+  *)
+    NODE="$1"
+    shift
+    ;;
+  esac
 done
-set -- "${POSITIONAL[@]}" # restore positional parameters
 
-if [ -z "$1" ]; then
+if [ -z "$NODE" ]; then
   echo "Please specify node name"
   exit 1
 fi
 
-NODE="$1"
 IMAGE="alpine"
-POD="nsenter-$(env LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 6)"
-NAMESPACE=""
+POD="nsenter-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
 
 # Check the node
-kubectl get node "$NODE" >/dev/null || exit 1
+kubectl get node "$NODE" $CONTEXT $KUBECONFIG >/dev/null || exit 1
 
-OVERRIDES="$(cat <<EOT
+OVERRIDES="$(
+  cat <<EOT
 {
   "spec": {
     "nodeName": "$NODE",
@@ -63,4 +66,4 @@ EOT
 )"
 
 echo "spawning \"$POD\" on \"$NODE\""
-kubectl run --namespace "$NAMESPACE" --rm --image alpine --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD" $CONTEXT $KUBECONFIG
+kubectl run --rm --image alpine --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD" $CONTEXT $KUBECONFIG $NAMESPACE
