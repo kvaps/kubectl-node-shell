@@ -1,58 +1,58 @@
 #!/bin/sh
 
-CONTEXT=""
-KUBECONFIG=""
-NODE=""
-NAMESPACE=""
+context=""
+kubeconfig=""
+node=""
+namespace=""
 while [ $# -gt 0 ]; do
   key="$1"
 
   case $key in
   --context)
-    CONTEXT="--context $2"
+    context="--context $2"
     shift
     shift
     ;;
   --kubeconfig)
-    KUBECONFIG="--kubeconfig $2"
+    kubeconfig="--kubeconfig $2"
     shift
     shift
     ;;
   -n | --namespace)
-    NAMESPACE="--namespace $2"
+    namespace="--namespace $2"
     shift
     shift
     ;;
   *)
-    NODE="$1"
+    node="$1"
     shift
     ;;
   esac
 done
 
-if [ -z "$NODE" ]; then
+if [ -z "$node" ]; then
   echo "Please specify node name"
   exit 1
 fi
 
-IMAGE="docker.io/library/alpine"
-POD="nsenter-$(env LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 6)"
+image="docker.io/library/alpine"
+pod="nsenter-$(env LC_ALL=C tr -dc a-z0-9 < /dev/urandom | head -c 6)"
 
 # Check the node
-kubectl get node "$NODE" $CONTEXT $KUBECONFIG >/dev/null || exit 1
+kubectl get node "$node" $context $kubeconfig >/dev/null || exit 1
 
-OVERRIDES="$(
+overrides="$(
   cat <<EOT
 {
   "spec": {
-    "nodeName": "$NODE",
+    "nodeName": "$node",
     "hostPID": true,
     "containers": [
       {
         "securityContext": {
           "privileged": true
         },
-        "image": "$IMAGE",
+        "image": "$image",
         "name": "nsenter",
         "stdin": true,
         "stdinOnce": true,
@@ -65,5 +65,5 @@ OVERRIDES="$(
 EOT
 )"
 
-echo "spawning \"$POD\" on \"$NODE\""
-kubectl run --rm --image "$IMAGE" --overrides="$OVERRIDES" --generator=run-pod/v1 -ti "$POD" $CONTEXT $KUBECONFIG $NAMESPACE
+echo "spawning \"$pod\" on \"$node\""
+kubectl run --rm --image "$image" --overrides="$overrides" --generator=run-pod/v1 -ti "$pod" $context $kubeconfig $namespace
