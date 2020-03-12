@@ -14,7 +14,7 @@ while [ $# -gt 0 ]; do
     shift
     ;;
   --kubeconfig)
-    KUBECONFIG="--kubconfig $2"
+    KUBECONFIG="--kubeconfig $2"
     shift
     shift
     ;;
