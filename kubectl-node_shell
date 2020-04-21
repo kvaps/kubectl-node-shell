@@ -2,6 +2,7 @@
 
 context=""
 kubeconfig=""
+generator=""
 node=""
 namespace=""
 while [ $# -gt 0 ]; do
@@ -65,5 +66,11 @@ overrides="$(
 EOT
 )"
 
+# Support Kubectl <1.18
+minor=$(kubectl version --client -o yaml | while read k v; do [ "$k" = minor: ] && echo "${v//\"/}"; done)
+if [ $minor -lt 18 ]; then
+  generator="--generator=run-pod/v1"
+fi
+
 echo "spawning \"$pod\" on \"$node\""
-kubectl run --rm --image "$image" --overrides="$overrides" -ti "$pod" $context $kubeconfig $namespace
+kubectl run --rm --image "$image" --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
