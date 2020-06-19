@@ -28,18 +28,13 @@ while [ $# -gt 0 ]; do
       cat <<EOT
 "tolerations": [
   {
-    "key": "$cluster.node.taint", 
-    "operator": "Equal",
-    "value": "$2",
+    "operator": "Exists",
     "effect": "NoExecute"
   }
 ],
-"nodeSelector": {
-  "$cluster.node.label": "$2"
-},
 EOT
 )"
-  shift 2
+  shift
   ;;
   *)
     node="$1"
