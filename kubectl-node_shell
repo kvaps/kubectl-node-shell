@@ -39,7 +39,6 @@ while [ $# -gt 0 ]; do
 },
 EOT
 )"
-echo $taint
   shift 2
   ;;
   *)
