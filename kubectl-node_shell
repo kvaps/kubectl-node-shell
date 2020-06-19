@@ -5,25 +5,43 @@ kubeconfig=""
 generator=""
 node=""
 namespace=""
+taint=""
 while [ $# -gt 0 ]; do
   key="$1"
 
   case $key in
   --context)
     context="--context $2"
-    shift
-    shift
+    shift 2
     ;;
   --kubeconfig)
     kubeconfig="--kubeconfig $2"
-    shift
-    shift
+    shift 2
     ;;
   -n | --namespace)
     namespace="--namespace $2"
-    shift
-    shift
+    shift 2
     ;;
+  --taint)
+    cluster=$(kubectl config current-context)
+    taint="$(
+      cat <<EOT
+"tolerations": [
+  {
+    "key": "$cluster.node.taint", 
+    "operator": "Equal",
+    "value": "$2",
+    "effect": "NoExecute"
+  }
+],
+"nodeSelector": {
+  "$cluster.node.label": "$2"
+},
+EOT
+)"
+echo $taint
+  shift 2
+  ;;
   *)
     node="$1"
     shift
@@ -46,6 +64,7 @@ overrides="$(
   cat <<EOT
 {
   "spec": {
+    $taint
     "nodeName": "$node",
     "hostPID": true,
     "containers": [
