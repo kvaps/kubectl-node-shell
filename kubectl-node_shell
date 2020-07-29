@@ -67,7 +67,7 @@ EOT
 )"
 
 # Support Kubectl <1.18
-m=$(kubectl version --client -o yaml | while read k v; do [ "$k" = minor: ] && echo "${v%\"*}"; done)
+m=$(kubectl version --client -o yaml | while read k v; do [ "$k" = minor: ] && echo "${v%\"*}"; done|grep -o '[0-9]\+')
 if [ "${m#*\"}" -lt 18 ]; then
   generator="--generator=run-pod/v1"
 fi
