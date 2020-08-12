@@ -48,6 +48,7 @@ overrides="$(
   "spec": {
     "nodeName": "$node",
     "hostPID": true,
+    "hostNetwork": true,
     "containers": [
       {
         "securityContext": {
