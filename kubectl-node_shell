@@ -6,7 +6,12 @@ generator=""
 node=""
 namespace=""
 cmd='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", '
-custom=""
+custom=false
+if ! [ -p /dev/stdin ] && ! [ -p /dev/stdout ]; then
+  tty=true
+else
+  tty=false
+fi
 while [ $# -gt 0 ]; do
   key="$1"
 
@@ -39,14 +44,14 @@ while [ $# -gt 0 ]; do
       node="$1"
     else
       cmd+="\"$1\", "
-      custom=1
+      custom=true
     fi
     shift
     ;;
   esac
 done
 
-if [ "$custom" = 1 ]; then
+if [ "$custom" = true ]; then
   cmd="$(echo "$cmd" | awk '1' RS=', \n') ]"
 else
   cmd+='"bash", "-l" ]'
@@ -79,7 +84,7 @@ overrides="$(
         "name": "nsenter",
         "stdin": true,
         "stdinOnce": true,
-        "tty": true,
+        "tty": $tty,
         "command": $cmd
       }
     ],
