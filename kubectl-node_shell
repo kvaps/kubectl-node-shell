@@ -85,4 +85,4 @@ fi
 
 echo "spawning \"$pod\" on \"$node\""
 trap "kubectl delete pod $pod $context $kubeconfig $namespace 2>/dev/null" EXIT
-kubectl run --image "$image" --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
+kubectl run --image "$image" --restart=Never --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
