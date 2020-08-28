@@ -3,6 +3,8 @@
 
 Start a root shell in the node's host OS running.
 
+![demo](https://gist.githubusercontent.com/kvaps/2e3d77975a844654ec297893e21a0829/raw/c778a8405ff8c686e4e807a97e9721b423e7208f/kubectl-node-shell.gif)
+
 ## Installation
 
 ```bash
@@ -23,7 +25,7 @@ kubectl node-shell <node> -- echo 123
 # Use stdin
 cat /etc/passwd | kubectl node-shell <node> -- sh -c 'cat > /tmp/passwd'
 
-# Run oneliner
+# Run oneliner script
 kubectl node-shell <node> -- sh -c 'cat /tmp/passwd; rm -f /tmp/passwd'
 ```
 
