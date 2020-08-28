@@ -92,5 +92,5 @@ if [ "$m" -lt 18 ]; then
 fi
 
 echo "spawning \"$pod\" on \"$node\""
-trap "kubectl delete pod --wait=false $pod $context $kubeconfig $namespace 2>/dev/null" EXIT
+trap "kubectl delete pod --wait=false $pod $context $kubeconfig $namespace 2>/dev/null" EXIT INT TERM
 kubectl run --image "$image" --restart=Never --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
