@@ -5,6 +5,8 @@ kubeconfig=""
 generator=""
 node=""
 namespace=""
+cmd='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", '
+custom=""
 while [ $# -gt 0 ]; do
   key="$1"
 
@@ -33,11 +35,22 @@ while [ $# -gt 0 ]; do
     shift
     ;;
   *)
-    node="$1"
+    if [ -z "$node" ]; then
+      node="$1"
+    else
+      cmd+="\"$1\", "
+      custom=1
+    fi
     shift
     ;;
   esac
 done
+
+if [ "$custom" = 1 ]; then
+  cmd="$(echo "$cmd" | awk '1' RS=', \n') ]"
+else
+  cmd+='"bash", "-l" ]'
+fi
 
 if [ -z "$node" ]; then
   echo "Please specify node name"
@@ -67,7 +80,7 @@ overrides="$(
         "stdin": true,
         "stdinOnce": true,
         "tty": true,
-        "command": [ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", "bash", "-l" ]
+        "command": $cmd
       }
     ],
     "tolerations": [
@@ -91,6 +104,7 @@ if [ "$m" -lt 18 ]; then
   generator="--generator=run-pod/v1"
 fi
 
+trap "EC=\$?; kubectl delete pod --wait=false $pod $context $kubeconfig $namespace 2>/dev/null; exit \$EC" EXIT INT TERM
+
 echo "spawning \"$pod\" on \"$node\""
-trap "kubectl delete pod --wait=false $pod $context $kubeconfig $namespace 2>/dev/null" EXIT INT TERM
 kubectl run --image "$image" --restart=Never --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
