@@ -84,4 +84,5 @@ if [ "$m" -lt 18 ]; then
 fi
 
 echo "spawning \"$pod\" on \"$node\""
-kubectl run --rm --image "$image" --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
+trap "kubectl delete pod $pod $context $kubeconfig $namespace 2>/dev/null" EXIT
+kubectl run --image "$image" --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
