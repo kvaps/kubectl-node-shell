@@ -7,6 +7,15 @@ Start a root shell in the node's host OS running.
 
 ## Installation
 
+using [krew](https://krew.sigs.k8s.io/):
+
+<pre>
+kubectl krew index add kvaps <a href="https://github.com/kvaps/krew-index">https://github.com/kvaps/krew-index</a>
+kubectl krew install kvaps/node-shell
+</pre>
+
+or using curl:
+
 ```bash
 curl -LO https://github.com/kvaps/kubectl-node-shell/raw/master/kubectl-node_shell
 chmod +x ./kubectl-node_shell
