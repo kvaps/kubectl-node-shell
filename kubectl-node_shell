@@ -119,7 +119,7 @@ if [ "$m" -lt 18 ]; then
   generator="--generator=run-pod/v1"
 fi
 
-trap "EC=\$?; kubectl delete pod --wait=false $pod $context $kubeconfig $namespace 2>/dev/null; exit \$EC" EXIT INT TERM
+trap "EC=\$?; kubectl delete pod --wait=false $pod $context $kubeconfig $namespace 2>/dev/null || true; exit \$EC" EXIT INT TERM
 
 echo "spawning \"$pod\" on \"$node\""
 kubectl run --image "$image" --restart=Never --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
