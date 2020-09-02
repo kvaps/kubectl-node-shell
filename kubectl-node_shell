@@ -1,11 +1,9 @@
 #!/usr/bin/env sh
 set -e
 
-context=""
-kubeconfig=""
+kubectl=kubectl
 generator=""
 node=""
-namespace=""
 cmd='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", '
 custom=false
 if ! [ -p /dev/stdin ] && ! [ -p /dev/stdout ]; then
@@ -18,26 +16,30 @@ while [ $# -gt 0 ]; do
 
   case $key in
   --context)
-    context="--context $2"
+    kubectl="$kubectl --context $2"
     shift
     shift
     ;;
   --kubecontext=*)
-    context="--context=${key##*=}"
+    kubectl="$kubectl --context=${key##*=}"
     shift
-  ;;
+    ;;
   --kubeconfig)
-    kubeconfig="--kubeconfig $2"
+    kubectl="$kubectl --kubeconfig $2"
     shift
     shift
     ;;
+  --kubeconfig=*)
+    kubectl="$kubectl --kubeconfig=${key##*=}"
+    shift
+    ;;
   -n | --namespace)
-    namespace="--namespace $2"
+    kubectl="$kubectl --namespace $2"
     shift
     shift
     ;;
   --namespace=*)
-    namespace="--namespace=${key##*=}"
+    kubectl="$kubectl --namespace=${key##*=}"
     shift
     ;;
   --)
@@ -119,7 +121,7 @@ if [ "$m" -lt 18 ]; then
   generator="--generator=run-pod/v1"
 fi
 
-trap "EC=\$?; kubectl delete pod --wait=false $pod $context $kubeconfig $namespace 2>/dev/null || true; exit \$EC" EXIT INT TERM
+trap "EC=\$?; $kubectl delete pod --wait=false $pod 2>/dev/null || true; exit \$EC" EXIT INT TERM
 
 echo "spawning \"$pod\" on \"$node\""
-kubectl run --image "$image" --restart=Never --overrides="$overrides" -ti "$pod" $generator $context $kubeconfig $namespace
+$kubectl run --image "$image" --restart=Never --overrides="$overrides" -ti "$pod" $generator
