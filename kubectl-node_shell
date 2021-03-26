@@ -74,7 +74,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 if [ "$custom" = true ]; then
-  cmd="$(echo "$cmd" | awk '1' RS=', \n') ]"
+  cmd="$(echo "$cmd" | awk '{sub(/..$/,"",$0); print $0}') ]"
 else
   cmd="$cmd\"bash\", \"-l\" ]"
 fi
