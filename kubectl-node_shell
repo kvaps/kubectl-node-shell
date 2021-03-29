@@ -65,8 +65,8 @@ while [ $# -gt 0 ]; do
 done
 
 # Set the default context and namespace to avoid situations where the user switch them during the build process
-[ "$nodefaultctx" = 1 ] || kubectl="$kubectl --context=$(kubectl config current-context)"
-[ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(kubectl config view --minify --output 'jsonpath={.contexts..namespace}')"
+[ "$nodefaultctx" = 1 ] || kubectl="$kubectl --context=$(${kubectl} config current-context)"
+[ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(${kubectl} config view --minify --output 'jsonpath={.contexts..namespace}')"
 
 while [ $# -gt 0 ]; do
   cmd="$cmd\"$1\", "
