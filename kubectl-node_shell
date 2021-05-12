@@ -84,7 +84,7 @@ if [ -z "$node" ]; then
   exit 1
 fi
 
-image="docker.io/library/alpine"
+image="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
 pod="nsenter-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
 
 # Check the node
