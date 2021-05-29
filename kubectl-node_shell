@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 set -e
 
 kubectl=kubectl
@@ -6,9 +6,9 @@ generator=""
 node=""
 nodefaultctx=0
 nodefaultns=0
-cmd='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--", '
+cmd=(nsenter --target 1 --mount --uts --ipc --net --pid --)
 custom=false
-if ! [ -p /dev/stdin ] && ! [ -p /dev/stdout ]; then
+if [ -t 0 ]; then
   tty=true
 else
   tty=false
@@ -68,16 +68,18 @@ done
 [ "$nodefaultctx" = 1 ] || kubectl="$kubectl --context=$(${kubectl} config current-context)"
 [ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(${kubectl} config view --minify --output 'jsonpath={.contexts..namespace}')"
 
-while [ $# -gt 0 ]; do
-  cmd="$cmd\"$1\", "
-  custom=true
-  shift
-done
-if [ "$custom" = true ]; then
-  cmd="$(echo "$cmd" | awk '{sub(/..$/,"",$0); print $0}') ]"
+if [ $# -gt 0 ]; then
+  cmd+=( "${@//
+/\\n}" )
 else
-  cmd="$cmd\"bash\", \"-l\" ]"
+  cmd+=(bash -l)
 fi
+# translate embedded single-quotes to double-quotes, so the following line will work
+cmd=( "${cmd[@]//\'/\"}" )
+
+# jsonify(as an array) the argument list (mainly from the command line)
+entrypoint="$(echo "['${cmd[@]/%/\', \'}']" | sed -e "s/' /'/g" \
+                   -e "s/, '']\$/]/" -Ee "s/([\"\\])/\\\\\1/g" -e 's/\\\\n/\\n/g' | tr \' \")"
 
 if [ -z "$node" ]; then
   echo "Please specify node name"
@@ -107,7 +109,7 @@ overrides="$(
         "stdin": true,
         "stdinOnce": true,
         "tty": $tty,
-        "command": $cmd
+        "command": $entrypoint
       }
     ],
     "tolerations": [
@@ -131,7 +133,7 @@ if [ "$m" -lt 18 ]; then
   generator="--generator=run-pod/v1"
 fi
 
-trap "EC=\$?; $kubectl delete pod --wait=false $pod 2>/dev/null || true; exit \$EC" EXIT INT TERM
+trap "EC=\$?; $kubectl delete pod --wait=false $pod >&2 || true; exit \$EC" EXIT INT TERM
 
-echo "spawning \"$pod\" on \"$node\""
-$kubectl run --image "$image" --restart=Never --overrides="$overrides" -ti "$pod" $generator
+echo "spawning \"$pod\" on \"$node\"" >&2
+$kubectl run --image "$image" --restart=Never --overrides="$overrides"  $([ -t 0 ] && echo -t) -i "$pod" $generator
