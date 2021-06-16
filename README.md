@@ -1,9 +1,20 @@
 # kubectl node-shell
 *(formerly known as **kubectl-enter**)*
 
+
 Start a root shell in the node's host OS running.
 
 ![demo](https://gist.githubusercontent.com/kvaps/2e3d77975a844654ec297893e21a0829/raw/c778a8405ff8c686e4e807a97e9721b423e7208f/kubectl-node-shell.gif)
+
+## My fork
+
+This is a fork of https://github.com/kvaps/kubectl-node-shell to add two
+functionalities:
+- Be able to use the script from inside a pod (i.e. with a service account
+  token mounted and no kubeconfig).
+- Select a random node when you don't specify it in the command line (because
+  often, roles tied to service account have no specific permissions about
+  nodes).
 
 ## Installation
 
