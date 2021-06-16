@@ -4,8 +4,10 @@ set -e
 kubectl=kubectl
 generator=""
 node=""
+nodenameinsert=""
 nodefaultctx=0
 nodefaultns=0
+nonodecheck=0
 cmd=(nsenter --target 1 --mount --uts --ipc --net --pid --)
 custom=false
 if [ -t 0 ]; then
@@ -17,6 +19,14 @@ while [ $# -gt 0 ]; do
   key="$1"
 
   case $key in
+  --incluster)
+    nodefaultctx=1
+    nodefaultns=1
+    nonodecheck=1
+    inclusterpath="/run/secrets/kubernetes.io/serviceaccount"
+    kubectl="$kubectl --token=$(cat $inclusterpath/token) --namespace=$(cat $inclusterpath/namespace)"
+    shift
+    ;;
   --context)
     nodefaultctx=1
     kubectl="$kubectl --context $2"
@@ -81,23 +91,25 @@ cmd=( "${cmd[@]//\'/\"}" )
 entrypoint="$(echo "['${cmd[@]/%/\', \'}']" | sed -e "s/' /'/g" \
                    -e "s/, '']\$/]/" -Ee "s/([\"\\])/\\\\\1/g" -e 's/\\\\n/\\n/g' | tr \' \")"
 
+nodenameinsert="\"nodeName\": \"$node\","
 if [ -z "$node" ]; then
-  echo "Please specify node name"
-  exit 1
+  echo "No node name was specified, selecting random node"
+  nonodecheck=1
+  nodenameinsert=''
 fi
 
 image="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
 pod="nsenter-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
 
 # Check the node
-$kubectl get node "$node" >/dev/null || exit 1
+[ "$nonodecheck" = 1 ] || $kubectl get node "$node" >/dev/null || exit 1
 
 overrides="$(
   cat <<EOT
 {
   "spec": {
-    "nodeName": "$node",
     "hostPID": true,
+    $nodenameinsert
     "hostNetwork": true,
     "containers": [
       {
@@ -135,5 +147,9 @@ fi
 
 trap "EC=\$?; $kubectl delete pod --wait=false $pod >&2 || true; exit \$EC" EXIT INT TERM
 
-echo "spawning \"$pod\" on \"$node\"" >&2
+if [ -z "$node" ]; then
+  echo "spawning \"$pod\" on a random node" >&2
+else
+  echo "spawning \"$pod\" on \"$node\"" >&2
+fi
 $kubectl run --image "$image" --restart=Never --overrides="$overrides"  $([ -t 0 ] && echo -t) -i "$pod" $generator
