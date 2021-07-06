@@ -2,6 +2,7 @@
 set -e
 
 kubectl=kubectl
+version=1.5.0
 generator=""
 node=""
 nodefaultctx=0
@@ -16,6 +17,10 @@ while [ $# -gt 0 ]; do
   key="$1"
 
   case $key in
+  -v | --version)
+    echo "kubectl-node-shell $version"
+    exit 0
+    ;;
   --context)
     nodefaultctx=1
     kubectl="$kubectl --context $2"
