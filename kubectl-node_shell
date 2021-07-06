@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -e
 
 kubectl=kubectl
@@ -6,9 +6,8 @@ generator=""
 node=""
 nodefaultctx=0
 nodefaultns=0
-cmd=(nsenter --target 1 --mount --uts --ipc --net --pid --)
-custom=false
-if [ -t 0 ]; then
+cmd='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--"'
+if ! [ -p /dev/stdin ] && ! [ -p /dev/stdout ]; then
   tty=true
 else
   tty=false
@@ -69,17 +68,16 @@ done
 [ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(${kubectl} config view --minify --output 'jsonpath={.contexts..namespace}')"
 
 if [ $# -gt 0 ]; then
-  cmd+=( "${@//
-/\\n}" )
+  while [ $# -gt 0 ]; do
+    cmd="$cmd, \"$(echo "$1" | \
+      awk '{gsub(/\\/,"\\\\");gsub(/"/,"\\\"");gsub(/$/,"\\n");printf last}{last=$0} END{gsub(/\\n/,"",last);printf last}' \
+    )\""
+    shift
+  done
+  cmd="$cmd ]"
 else
-  cmd+=(bash -l)
+  cmd="$cmd\"bash\", \"-l\" ]"
 fi
-# translate embedded single-quotes to double-quotes, so the following line will work
-cmd=( "${cmd[@]//\'/\"}" )
-
-# jsonify(as an array) the argument list (mainly from the command line)
-entrypoint="$(echo "['${cmd[@]/%/\', \'}']" | sed -e "s/' /'/g" \
-                   -e "s/, '']\$/]/" -Ee "s/([\"\\])/\\\\\1/g" -e 's/\\\\n/\\n/g' | tr \' \")"
 
 if [ -z "$node" ]; then
   echo "Please specify node name"
@@ -109,7 +107,7 @@ overrides="$(
         "stdin": true,
         "stdinOnce": true,
         "tty": $tty,
-        "command": $entrypoint
+        "command": $cmd
       }
     ],
     "tolerations": [
@@ -136,4 +134,4 @@ fi
 trap "EC=\$?; $kubectl delete pod --wait=false $pod >&2 || true; exit \$EC" EXIT INT TERM
 
 echo "spawning \"$pod\" on \"$node\"" >&2
-$kubectl run --image "$image" --restart=Never --overrides="$overrides"  $([ -t 0 ] && echo -t) -i "$pod" $generator
+$kubectl run --image "$image" --restart=Never --overrides="$overrides"  $([ "$tty" = true ] && echo -t) -i "$pod" $generator
