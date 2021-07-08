@@ -2,7 +2,7 @@
 set -e
 
 kubectl=kubectl
-version=1.5.0
+version=1.5.1
 generator=""
 node=""
 nodefaultctx=0
@@ -81,7 +81,7 @@ if [ $# -gt 0 ]; then
   done
   cmd="$cmd ]"
 else
-  cmd="$cmd\"bash\", \"-l\" ]"
+  cmd="$cmd, \"bash\", \"-l\" ]"
 fi
 
 if [ -z "$node" ]; then
