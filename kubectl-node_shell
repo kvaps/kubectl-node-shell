@@ -75,7 +75,7 @@ done
 if [ $# -gt 0 ]; then
   while [ $# -gt 0 ]; do
     cmd="$cmd, \"$(echo "$1" | \
-    awk 'BEGIN{RS="\f"}{gsub(/\\/,"\\\\");gsub(/"/,"\\\"");;gsub(/\n$/,"");gsub(/\n/,"\\n");gsub(/\x1b/,"\\u001b");print $0}' \
+    awk '{gsub(/["\\]/,"\\\\&");gsub(/\n/,"\\n");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0} END{gsub(/\\n/,"",last);printf "%s",last}' \
     )\""
     shift
   done
