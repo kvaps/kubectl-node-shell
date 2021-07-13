@@ -7,7 +7,7 @@ run_test() {
 
   local expected="$(mktemp)"
   local got="$(mktemp)"
-  
+
   if diff --strip-trailing-cr -u <(sh -c "$script") <(set -x; ./kubectl-node_shell $node -- sh -c "$script"); then
     echo -e "Result: \e[42mPASS\e[49m"
   else
@@ -22,7 +22,9 @@ if [ -z $1 ]; then
   exit -1
 fi
 
-case1=$(cat <<\EOT
+case=()
+
+case[1]=$(cat <<\EOT
 echo $(echo "
 hello everybody
 I'm a \"baby seal\""
@@ -31,7 +33,7 @@ I'm a \"baby seal\""
 EOT
 )
 
-case2=$(cat <<\EOT
+case[2]=$(cat <<\EOT
 
 echo "ggg
 
@@ -40,7 +42,7 @@ ttt"
 EOT
 )
 
-case3=$(cat <<\EOT
+case[3]=$(cat <<\EOT
 echo $(echo "
 hello everybody
 I'm a \"baby seal
@@ -52,6 +54,8 @@ really really
 EOT
 )
 
-run_test "case 1" "$1" "$case1"
-run_test "case 2" "$1" "$case2"
-run_test "case 3" "$1" "$case3"
+case[4]="$(echo -e echo "\e[42mHOLA\e[49m")"
+
+for i in $(seq 1 ${#case[@]}); do
+  run_test "case $i" "$1" "${case[$i]}"
+done
