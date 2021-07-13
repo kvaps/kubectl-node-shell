@@ -2,7 +2,7 @@
 set -e
 
 kubectl=kubectl
-version=1.5.2
+version=1.5.3
 generator=""
 node=""
 nodefaultctx=0
@@ -75,7 +75,7 @@ done
 if [ $# -gt 0 ]; then
   while [ $# -gt 0 ]; do
     cmd="$cmd, \"$(echo "$1" | \
-      awk '{gsub(/\\/,"\\\\");gsub(/"/,"\\\"");gsub(/$/,"\\n");printf last}{last=$0} END{gsub(/\\n/,"",last);printf last}' \
+      awk '{gsub(/["\\]/,"\\\\&");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0"\\n"} END{print $0}' \
     )\""
     shift
   done
