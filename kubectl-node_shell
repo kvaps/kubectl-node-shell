@@ -58,7 +58,7 @@ while [ $# -gt 0 ]; do
     ;;
   *)
     if [ -z "$node" ]; then
-      node="$(echo $1 | sed 's/^node\///')"
+      node="${1#node/}"
       shift
     else
       echo "exactly one node required"
