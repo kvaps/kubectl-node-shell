@@ -2,7 +2,7 @@
 set -e
 
 kubectl=kubectl
-version=1.5.3
+version=1.5.4
 generator=""
 node=""
 nodefaultctx=0
@@ -58,7 +58,7 @@ while [ $# -gt 0 ]; do
     ;;
   *)
     if [ -z "$node" ]; then
-      node="$1"
+      node="${1#node/}"
       shift
     else
       echo "exactly one node required"
