@@ -95,6 +95,8 @@ pod="nsenter-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
 # Check the node
 $kubectl get node "$node" >/dev/null || exit 1
 
+container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
+container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
 overrides="$(
   cat <<EOT
 {
@@ -112,7 +114,17 @@ overrides="$(
         "stdin": true,
         "stdinOnce": true,
         "tty": $tty,
-        "command": $cmd
+        "command": $cmd,
+        "resources": {
+          "limits": {
+            "cpu": "${container_cpu}",
+            "memory": "${container_memory}"
+          },
+          "requests": {
+            "cpu": "${container_cpu}",
+            "memory": "${container_memory}"
+          }
+        }
       }
     ],
     "tolerations": [
