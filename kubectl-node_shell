@@ -97,6 +97,8 @@ $kubectl get node "$node" >/dev/null || exit 1
 
 container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
 container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
+labels="${KUBECTL_NODE_SHELL_LABELS}"
+
 overrides="$(
   cat <<EOT
 {
@@ -151,4 +153,4 @@ fi
 trap "EC=\$?; $kubectl delete pod --wait=false $pod >&2 || true; exit \$EC" EXIT INT TERM
 
 echo "spawning \"$pod\" on \"$node\"" >&2
-$kubectl run --image "$image" --restart=Never --overrides="$overrides"  $([ "$tty" = true ] && echo -t) -i "$pod" $generator
+$kubectl run --image "$image" --restart=Never --overrides="$overrides" --labels="$labels" $([ "$tty" = true ] && echo -t) -i "$pod" $generator
