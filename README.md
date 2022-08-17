@@ -10,6 +10,11 @@ Start a root shell in the node's host OS running.
 using [krew](https://krew.sigs.k8s.io/):
 
 <pre>
+kubectl krew install node-shell
+</pre>
+
+If the plugin not found, install as follows:
+<pre>
 kubectl krew index add kvaps <a href="https://github.com/kvaps/krew-index">https://github.com/kvaps/krew-index</a>
 kubectl krew install kvaps/node-shell
 </pre>
