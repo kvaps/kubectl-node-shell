@@ -2,12 +2,19 @@
 set -e
 
 kubectl=kubectl
-version=1.5.5
+version=1.6.0
 generator=""
 node=""
 nodefaultctx=0
 nodefaultns=0
-cmd='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--"'
+
+cmd_windows='[ "powershell.exe"'
+cmd_linux='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--"'
+image_linux="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
+image_windows="${KUBECTL_NODE_SHELL_WINDOWS:-mcr.microsoft.com/powershell}"
+pod_linux="nsenter-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
+pod_windows="pwsh-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
+
 if [ -t 0 ]; then
   tty=true
 else
@@ -72,34 +79,103 @@ done
 [ "$nodefaultctx" = 1 ] || kubectl="$kubectl --context=$(${kubectl} config current-context)"
 [ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(${kubectl} config view --minify --output 'jsonpath={.contexts..namespace}')"
 
-if [ $# -gt 0 ]; then
-  while [ $# -gt 0 ]; do
-    cmd="$cmd, \"$(echo "$1" | \
-      awk '{gsub(/["\\]/,"\\\\&");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0"\\n"} END{print $0}' \
-    )\""
-    shift
-  done
-  cmd="$cmd ]"
-else
-  cmd="$cmd, \"bash\", \"-l\" ]"
-fi
-
 if [ -z "$node" ]; then
   echo "Please specify node name"
   exit 1
 fi
 
-image="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
-pod="nsenter-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
-
 # Check the node
 $kubectl get node "$node" >/dev/null || exit 1
+os="$($kubectl get node $node -o jsonpath="{.metadata.labels.kubernetes\.io/os}")"
 
 container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
 container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
 labels="${KUBECTL_NODE_SHELL_LABELS}"
 
-overrides="$(
+
+if [ "$os" = "windows" ]; then
+  cmd="$cmd_windows"
+  image="$image_windows"
+  pod="$pod_windows"
+
+  if [ $# -gt 0 ]; then
+    while [ $# -gt 0 ]; do
+      cmd="$cmd, \"$(echo "$1" | \
+        awk '{gsub(/["\\]/,"\\\\&");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0"\\n"} END{print $0}' \
+      )\""
+      shift
+    done
+  fi
+  cmd="$cmd ]"
+
+  overrides="$(
+    cat <<EOT
+{
+  "spec": {
+    "nodeName": "$node",
+    "hostPID": true,
+    "hostNetwork": true,
+    "containers": [
+      {
+        "securityContext": {
+          "privileged": true,
+          "windowsOptions": {
+            "hostProcess": true,
+            "runAsUserName": "NT AUTHORITY\\\\SYSTEM"
+          }
+        },
+        "image": "$image_windows",
+        "name": "powershell",
+        "stdin": true,
+        "stdinOnce": true,
+        "tty": $tty,
+        "command": $cmd,
+        "workingDir": "C:\\\\",
+        "resources": {
+          "limits": {
+            "cpu": "${container_cpu}",
+            "memory": "${container_memory}"
+          },
+          "requests": {
+            "cpu": "${container_cpu}",
+            "memory": "${container_memory}"
+          }
+        }
+      }
+    ],
+    "tolerations": [
+      {
+        "key": "CriticalAddonsOnly",
+        "operator": "Exists"
+      },
+      {
+        "effect": "NoExecute",
+        "operator": "Exists"
+      }
+    ]
+  }
+}
+EOT
+  )"
+  echo "$overrides"
+else
+  cmd="$cmd_linux"
+  image="$image_linux"
+  pod="$pod_linux"
+
+  if [ $# -gt 0 ]; then
+    while [ $# -gt 0 ]; do
+      cmd="$cmd, \"$(echo "$1" | \
+        awk '{gsub(/["\\]/,"\\\\&");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0"\\n"} END{print $0}' \
+      )\""
+      shift
+    done
+    cmd="$cmd ]"
+  else
+    cmd="$cmd, \"bash\", \"-l\" ]"
+  fi
+
+  overrides="$(
   cat <<EOT
 {
   "spec": {
@@ -111,7 +187,7 @@ overrides="$(
         "securityContext": {
           "privileged": true
         },
-        "image": "$image",
+        "image": "$image_linux",
         "name": "nsenter",
         "stdin": true,
         "stdinOnce": true,
@@ -142,7 +218,8 @@ overrides="$(
   }
 }
 EOT
-)"
+  )"
+fi
 
 # Support Kubectl <1.18
 m=$(kubectl version --client -o yaml | awk -F'[ :"]+' '$2 == "minor" {print $3+0}')
