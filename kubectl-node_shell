@@ -90,23 +90,23 @@ if [ "$os" = "windows" ]; then
   pod="${name}-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
   # pwsh has to be launched via cmd.exe because of how containerd 1.6 handles the mount of the container filesystem
   # see https://kubernetes.io/docs/tasks/configure-pod-container/create-hostprocess-pod/#volume-mounts
-  cmdStart='"cmd.exe", "/c", "%CONTAINER_SANDBOX_MOUNT_POINT%\\Program Files\\PowerShell\\latest\\pwsh.exe", "-nol", "-wd", "C:\\"'
-  cmdArgPrefix=', "-Command"'
-  cmdDefault=''
-  securityContext='{"privileged":true,"windowsOptions":{"hostProcess":true,"runAsUserName":"NT AUTHORITY\\SYSTEM"}}'
+  cmd_start='"cmd.exe", "/c", "%CONTAINER_SANDBOX_MOUNT_POINT%\\Program Files\\PowerShell\\latest\\pwsh.exe", "-nol", "-wd", "C:\\"'
+  cmd_arg_prefix=', "-Command"'
+  cmd_default=''
+  security_context='{"privileged":true,"windowsOptions":{"hostProcess":true,"runAsUserName":"NT AUTHORITY\\SYSTEM"}}'
 else # If the OS isn't windows, assume linux
   image="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
   name="nsenter"
   pod="${name}-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
-  cmdStart='"nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid"'
-  cmdArgPrefix=', "--"'
-  cmdDefault=', "bash", "-l"'
-  securityContext='{"privileged":true}'
+  cmd_start='"nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid"'
+  cmd_arg_prefix=', "--"'
+  cmd_default=', "bash", "-l"'
+  security_context='{"privileged":true}'
 fi
 
 # Build the container command
 if [ $# -gt 0 ]; then
-  cmd="[ $cmdStart $cmdArgPrefix"
+  cmd="[ $cmd_start $cmd_arg_prefix"
   while [ $# -gt 0 ]; do
     cmd="$cmd, \"$(echo "$1" | \
       awk '{gsub(/["\\]/,"\\\\&");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0"\\n"} END{print $0}' \
@@ -115,7 +115,7 @@ if [ $# -gt 0 ]; then
   done
   cmd="$cmd ]"
 else
-  cmd="[ $cmdStart $cmdDefault ]"
+  cmd="[ $cmd_start $cmd_default ]"
 fi
 
 overrides="$(
@@ -127,7 +127,7 @@ cat <<EOT
     "hostNetwork": true,
     "containers": [
       {
-        "securityContext": $securityContext,
+        "securityContext": $security_context,
         "image": "$image",
         "name": "$name",
         "stdin": true,
