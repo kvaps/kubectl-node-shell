@@ -2,12 +2,15 @@
 set -e
 
 kubectl=kubectl
-version=1.5.5
+version=1.7.0
 generator=""
 node=""
 nodefaultctx=0
 nodefaultns=0
-cmd='[ "nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid", "--"'
+container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
+container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
+labels="${KUBECTL_NODE_SHELL_LABELS}"
+
 if [ -t 0 ]; then
   tty=true
 else
@@ -68,11 +71,42 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+if [ -z "$node" ]; then
+  echo "Please specify node name"
+  exit 1
+fi
+
 # Set the default context and namespace to avoid situations where the user switch them during the build process
 [ "$nodefaultctx" = 1 ] || kubectl="$kubectl --context=$(${kubectl} config current-context)"
 [ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(${kubectl} config view --minify --output 'jsonpath={.contexts..namespace}')"
 
+# Check the node and retrieve the node OS label
+os="$($kubectl get node $node -o jsonpath="{.metadata.labels.kubernetes\.io/os}" || exit 1)"
+
+# Set pod configuration per operating system
+if [ "$os" = "windows" ]; then
+  image="${KUBECTL_NODE_SHELL_IMAGE_WINDOWS:-mcr.microsoft.com/powershell}"
+  name="pwsh"
+  pod="${name}-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
+  # pwsh has to be launched via cmd.exe because of how containerd 1.6 handles the mount of the container filesystem
+  # see https://kubernetes.io/docs/tasks/configure-pod-container/create-hostprocess-pod/#volume-mounts
+  cmd_start='"cmd.exe", "/c", "%CONTAINER_SANDBOX_MOUNT_POINT%\\Program Files\\PowerShell\\latest\\pwsh.exe", "-nol", "-wd", "C:\\"'
+  cmd_arg_prefix=', "-Command"'
+  cmd_default=''
+  security_context='{"privileged":true,"windowsOptions":{"hostProcess":true,"runAsUserName":"NT AUTHORITY\\SYSTEM"}}'
+else # If the OS isn't windows, assume linux
+  image="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
+  name="nsenter"
+  pod="${name}-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
+  cmd_start='"nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid"'
+  cmd_arg_prefix=', "--"'
+  cmd_default=', "bash", "-l"'
+  security_context='{"privileged":true}'
+fi
+
+# Build the container command
 if [ $# -gt 0 ]; then
+  cmd="[ $cmd_start $cmd_arg_prefix"
   while [ $# -gt 0 ]; do
     cmd="$cmd, \"$(echo "$1" | \
       awk '{gsub(/["\\]/,"\\\\&");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0"\\n"} END{print $0}' \
@@ -81,26 +115,11 @@ if [ $# -gt 0 ]; then
   done
   cmd="$cmd ]"
 else
-  cmd="$cmd, \"bash\", \"-l\" ]"
+  cmd="[ $cmd_start $cmd_default ]"
 fi
-
-if [ -z "$node" ]; then
-  echo "Please specify node name"
-  exit 1
-fi
-
-image="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
-pod="nsenter-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
-
-# Check the node
-$kubectl get node "$node" >/dev/null || exit 1
-
-container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
-container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
-labels="${KUBECTL_NODE_SHELL_LABELS}"
 
 overrides="$(
-  cat <<EOT
+cat <<EOT
 {
   "spec": {
     "nodeName": "$node",
@@ -108,36 +127,22 @@ overrides="$(
     "hostNetwork": true,
     "containers": [
       {
-        "securityContext": {
-          "privileged": true
-        },
+        "securityContext": $security_context,
         "image": "$image",
-        "name": "nsenter",
+        "name": "$name",
         "stdin": true,
         "stdinOnce": true,
         "tty": $tty,
         "command": $cmd,
         "resources": {
-          "limits": {
-            "cpu": "${container_cpu}",
-            "memory": "${container_memory}"
-          },
-          "requests": {
-            "cpu": "${container_cpu}",
-            "memory": "${container_memory}"
-          }
+          "limits":   { "cpu": "${container_cpu}", "memory": "${container_memory}" },
+          "requests": { "cpu": "${container_cpu}", "memory": "${container_memory}" }
         }
       }
     ],
     "tolerations": [
-      {
-        "key": "CriticalAddonsOnly",
-        "operator": "Exists"
-      },
-      {
-        "effect": "NoExecute",
-        "operator": "Exists"
-      }
+      { "key": "CriticalAddonsOnly", "operator": "Exists" },
+      { "effect": "NoExecute",       "operator": "Exists" }
     ]
   }
 }
