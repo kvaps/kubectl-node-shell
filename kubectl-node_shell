@@ -2,13 +2,16 @@
 set -e
 
 kubectl=kubectl
-version=1.7.0
+version=1.8.0
 generator=""
 node=""
 nodefaultctx=0
 nodefaultns=0
 container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
 container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
+volumes="[]"
+volume_mounts="[]"
+x_mode=0
 labels="${KUBECTL_NODE_SHELL_LABELS}"
 
 if [ -t 0 ]; then
@@ -53,6 +56,12 @@ while [ $# -gt 0 ]; do
   --namespace=*)
     nodefaultns=1
     kubectl="$kubectl --namespace=${key##*=}"
+    shift
+    ;;
+  -x)
+    x_mode=1
+    volumes='[{"hostPath":{"path":"/","type":""},"name":"host-root"}]'
+    volume_mounts='[{"mountPath":"/host","name":"host-root"}]'
     shift
     ;;
   --)
@@ -106,16 +115,26 @@ fi
 
 # Build the container command
 if [ $# -gt 0 ]; then
-  cmd="[ $cmd_start $cmd_arg_prefix"
+  if [ "$x_mode" -eq 1 ]; then
+    cmd='['
+  else
+    cmd="[ $cmd_start $cmd_arg_prefix,"
+  fi
+  c=""
   while [ $# -gt 0 ]; do
-    cmd="$cmd, \"$(echo "$1" | \
+    cmd="${cmd}${c} \"$(echo "$1" | \
       awk '{gsub(/["\\]/,"\\\\&");gsub(/\x1b/,"\\u001b");printf "%s",last;last=$0"\\n"} END{print $0}' \
     )\""
+    c=,
     shift
   done
   cmd="$cmd ]"
 else
-  cmd="[ $cmd_start $cmd_default ]"
+  if [ "$x_mode" = 1 ]; then
+    cmd='null'
+  else
+    cmd="[ $cmd_start $cmd_default ]"
+  fi
 fi
 
 overrides="$(
@@ -137,13 +156,15 @@ cat <<EOT
         "resources": {
           "limits":   { "cpu": "${container_cpu}", "memory": "${container_memory}" },
           "requests": { "cpu": "${container_cpu}", "memory": "${container_memory}" }
-        }
+        },
+        "volumeMounts": $volume_mounts
       }
     ],
     "tolerations": [
       { "key": "CriticalAddonsOnly", "operator": "Exists" },
       { "effect": "NoExecute",       "operator": "Exists" }
-    ]
+    ],
+    "volumes": $volumes
   }
 }
 EOT

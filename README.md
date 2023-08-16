@@ -28,6 +28,9 @@ sudo mv ./kubectl-node_shell /usr/local/bin/kubectl-node_shell
 # Get standard bash shell
 kubectl node-shell <node>
 
+# Use X-mode (mount /host, and do not enter host namespace)
+kubectl node-shell -x <node>
+
 # Execute custom command
 kubectl node-shell <node> -- echo 123
 
@@ -36,6 +39,40 @@ cat /etc/passwd | kubectl node-shell <node> -- sh -c 'cat > /tmp/passwd'
 
 # Run oneliner script
 kubectl node-shell <node> -- sh -c 'cat /tmp/passwd; rm -f /tmp/passwd'
+```
+
+## X-mode
+
+X-mode can be useful for debugging minimal systems that do not have a built-in shell (eg. Talos).  
+Here's an example of how you can debug the network for a rootless kube-apiserver container without a filesystem:
+
+```bash
+kubectl node-shell -x <node>
+
+# Download crictl
+wget https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.28.0/crictl-v1.28.0-linux-amd64.tar.gz -O- | \
+  tar -xzf- -C /usr/local/bin/
+
+# Setup CRI endpoint
+export CONTAINER_RUNTIME_ENDPOINT=unix:///host/run/containerd/containerd.sock
+
+# Find your container
+crictl ps | grep kube-apiserver
+#3ff4626a9f10e       e7972205b6614       6 hours ago         Running             kube-apiserver         0                   215107b47bd7e       kube-apiserver-talos-rzq-nkg
+
+# Find pid of the container
+crictl inspect 3ff4626a9f10e | grep pid
+#    "pid": 2152,
+#            "pid": 1
+#            "type": "pid"
+#                "getpid",
+#                "getppid",
+#                "pidfd_open",
+#                "pidfd_send_signal",
+#                "waitpid",
+
+# Go to network namespace of the pid, but keep mount namespace of the debug container
+nsenter -t 2152 -n
 ```
 
 *You need to be able to start privileged containers for that.*
