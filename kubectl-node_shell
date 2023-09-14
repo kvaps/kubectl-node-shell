@@ -85,9 +85,11 @@ if [ -z "$node" ]; then
   exit 1
 fi
 
-# Set the default context and namespace to avoid situations where the user switch them during the build process
-[ "$nodefaultctx" = 1 ] || kubectl="$kubectl --context=$(${kubectl} config current-context)"
-[ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(${kubectl} config view --minify --output 'jsonpath={.contexts..namespace}')"
+if [ -z "$KUBERNETES_PORT" ]; then
+  # Set the default context and namespace to avoid situations where the user switch them during the build process
+  [ "$nodefaultctx" = 1 ] || kubectl="$kubectl --context=$(${kubectl} config current-context)"
+  [ "$nodefaultns" = 1 ] || kubectl="$kubectl --namespace=$(${kubectl} config view --minify --output 'jsonpath={.contexts..namespace}')"
+fi
 
 # Check the node and retrieve the node OS label
 os="$($kubectl get node $node -o jsonpath="{.metadata.labels.kubernetes\.io/os}" || exit 1)"
