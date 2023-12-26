@@ -2,7 +2,7 @@
 set -e
 
 kubectl=kubectl
-version=1.8.1
+version=1.9.0
 generator=""
 node=""
 nodefaultctx=0
@@ -13,6 +13,7 @@ volumes="[]"
 volume_mounts="[]"
 x_mode=0
 labels="${KUBECTL_NODE_SHELL_LABELS}"
+pod_running_timeout="${KUBECTL_NODE_SHELL_POD_RUNNING_TIMEOUT:-1m}"
 
 if [ -t 0 ]; then
   tty=true
@@ -181,4 +182,4 @@ fi
 trap "EC=\$?; $kubectl delete pod --wait=false $pod >&2 || true; exit \$EC" EXIT INT TERM
 
 echo "spawning \"$pod\" on \"$node\"" >&2
-$kubectl run --image "$image" --restart=Never --overrides="$overrides" --labels="$labels" $([ "$tty" = true ] && echo -t) -i "$pod" $generator
+$kubectl run --image "$image" --restart=Never --overrides="$overrides" --labels="$labels" --pod-running-timeout="$pod_running_timeout" $([ "$tty" = true ] && echo -t) -i "$pod" $generator
