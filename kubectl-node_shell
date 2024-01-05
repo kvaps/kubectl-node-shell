@@ -7,7 +7,6 @@ generator=""
 node=""
 nodefaultctx=0
 nodefaultns=0
-container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
 container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
 volumes="[]"
 volume_mounts="[]"
@@ -157,8 +156,8 @@ cat <<EOT
         "tty": $tty,
         "command": $cmd,
         "resources": {
-          "limits":   { "cpu": "${container_cpu}", "memory": "${container_memory}" },
-          "requests": { "cpu": "${container_cpu}", "memory": "${container_memory}" }
+          "limits":   { "memory": "${container_memory}" },
+          "requests": { "memory": "${container_memory}" }
         },
         "volumeMounts": $volume_mounts
       }
