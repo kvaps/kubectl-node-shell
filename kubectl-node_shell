@@ -141,18 +141,11 @@ else
 fi
 
 # test if resource specification is required
-set +e
-$kubectl run test --image test --dry-run=server 2>&1 | grep 'failed quota' --quiet
-if [ $? -eq 0 ];then
-  resources_json='"resources": {
+resources_json='"resources": {
           "limits":   { "cpu": "'${container_cpu}'", "memory": "'${container_memory}'" },
           "requests": { "cpu": "'${container_cpu}'", "memory": "'${container_memory}'" }
         }'
-else
-  resources_json='"resources": {}'
-
-fi
-set -e
+$kubectl run test --image test --dry-run=server 2>&1 | grep 'failed quota' --quiet || resources_json='"resources": {}'
 
 overrides="$(
 cat <<EOT
