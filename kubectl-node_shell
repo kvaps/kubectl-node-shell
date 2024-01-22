@@ -143,7 +143,7 @@ resources_json='"resources": {
           "limits":   { "cpu": "'${container_cpu}'", "memory": "'${container_memory}'" },
           "requests": { "cpu": "'${container_cpu}'", "memory": "'${container_memory}'" }
         }'
-$kubectl run test --image test --dry-run=server 2>&1 | grep 'failed quota' --quiet || resources_json='"resources": {}'
+$kubectl run --image "$image" "$pod" --dry-run=server 2>&1 | grep -q 'failed quota' || resources_json='"resources": {}'
 
 overrides="$(
 cat <<EOT
