@@ -17,7 +17,7 @@ kubectl krew install node-shell
 
 Or from our own krew repository:
 <pre>
-kubectl krew index add kvaps <a href="https://github.com/kvaps/krew-index">https://github.com/kvaps/krew-index</a>
+kubectl krew index add kvaps https://github.com/kvaps/krew-index
 kubectl krew install kvaps/node-shell
 </pre>
 
