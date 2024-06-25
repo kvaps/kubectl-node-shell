@@ -14,6 +14,7 @@ volume_mounts="[]"
 x_mode=0
 labels="${KUBECTL_NODE_SHELL_LABELS}"
 pod_running_timeout="${KUBECTL_NODE_SHELL_POD_RUNNING_TIMEOUT:-1m}"
+image_pull_secret_name="${KUBECTL_NODE_SHELL_IMAGE_PULL_SECRET_NAME}"
 
 if [ -t 0 ]; then
   tty=true
@@ -145,6 +146,12 @@ resources_json='"resources": {
         }'
 $kubectl run --image "$image" "$pod" --dry-run=server 2>&1 | grep -q 'failed quota' || resources_json='"resources": {}'
 
+if [ -n "${image_pull_secret_name}" ]; then
+  image_pull_secrets='[ { "name": "'${image_pull_secret_name}'" } ]'
+else
+  image_pull_secrets='null'
+fi
+
 overrides="$(
 cat <<EOT
 {
@@ -152,6 +159,7 @@ cat <<EOT
     "nodeName": "$node",
     "hostPID": true,
     "hostNetwork": true,
+    "imagePullSecrets": $image_pull_secrets,
     "containers": [
       {
         "securityContext": $security_context,
