@@ -59,10 +59,16 @@ while [ $# -gt 0 ]; do
     kubectl="$kubectl --namespace=${key##*=}"
     shift
     ;;
+  -m | --mount)
+    volumes=$(echo "$volumes" | jq '. += [{"persistentVolumeClaim": {"claimName": "'"$2"'", "type": ""}, "name": "'"pvc"'"}]')
+    volume_mounts=$(echo "$volume_mounts" | jq '. += [{"mountPath": "/opt-pvc", "name": "'"pvc"'"}]')
+    shift
+    shift
+    ;;
   -x)
     x_mode=1
-    volumes='[{"hostPath":{"path":"/","type":""},"name":"host-root"}]'
-    volume_mounts='[{"mountPath":"/host","name":"host-root"}]'
+    volumes=$(echo "$volumes" | jq '. += [{"hostPath": {"path": "/", "type": ""}, "name": "host-root"}]')
+    volume_mounts=$(echo "$volume_mounts" | jq '. += [{"mountPath":"/host","name":"host-root"}]')
     shift
     ;;
   --)
