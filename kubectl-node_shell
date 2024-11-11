@@ -14,6 +14,7 @@ volume_mounts="[]"
 x_mode=0
 labels="${KUBECTL_NODE_SHELL_LABELS}"
 pod_running_timeout="${KUBECTL_NODE_SHELL_POD_RUNNING_TIMEOUT:-1m}"
+custom_image=""
 
 if [ -t 0 ]; then
   tty=true
@@ -65,6 +66,11 @@ while [ $# -gt 0 ]; do
     volume_mounts='[{"mountPath":"/host","name":"host-root"}]'
     shift
     ;;
+  --image)
+    custom_image="$2"
+    shift
+    shift
+    ;;
   --)
     shift
     break
@@ -97,7 +103,8 @@ os="$($kubectl get node $node -o jsonpath="{.metadata.labels.kubernetes\.io/os}"
 
 # Set pod configuration per operating system
 if [ "$os" = "windows" ]; then
-  image="${KUBECTL_NODE_SHELL_IMAGE_WINDOWS:-mcr.microsoft.com/oss/kubernetes/windows-host-process-containers-base-image:v1.0.0}"
+  default_image="mcr.microsoft.com/oss/kubernetes/windows-host-process-containers-base-image:v1.0.0"
+  image="${custom_image:-${KUBECTL_NODE_SHELL_IMAGE_WINDOWS:-$default_image}}"
   name="pwsh"
   pod="${name}-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
   cmd_start='"cmd.exe", "/c", "powershell.exe", "-nol"'
@@ -105,7 +112,8 @@ if [ "$os" = "windows" ]; then
   cmd_default=''
   security_context='{"privileged":true,"windowsOptions":{"hostProcess":true,"runAsUserName":"NT AUTHORITY\\SYSTEM"}}'
 else # If the OS isn't windows, assume linux
-  image="${KUBECTL_NODE_SHELL_IMAGE:-docker.io/library/alpine}"
+  default_image="docker.io/library/alpine"
+  image="${custom_image:-${KUBECTL_NODE_SHELL_IMAGE:-$default_image}}"
   name="nsenter"
   pod="${name}-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
   cmd_start='"nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid"'
