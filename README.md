@@ -35,6 +35,9 @@ sudo mv ./kubectl-node_shell /usr/local/bin/kubectl-node_shell
 # Get standard bash shell
 kubectl node-shell <node>
 
+# Use custom image for pod
+kubectl node-shell <node> --image <image>
+
 # Use X-mode (mount /host, and do not enter host namespace)
 kubectl node-shell -x <node>
 
