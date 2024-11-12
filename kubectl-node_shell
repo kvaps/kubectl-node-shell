@@ -2,7 +2,7 @@
 set -e
 
 kubectl=kubectl
-version=1.10.0
+version=1.10.2
 generator=""
 node=""
 nodefaultctx=0
