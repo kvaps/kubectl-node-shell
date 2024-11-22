@@ -41,6 +41,9 @@ kubectl node-shell <node> --image <image>
 # Use X-mode (mount /host, and do not enter host namespace)
 kubectl node-shell -x <node>
 
+# Skip specific namespace types to enter, choose any of ipc, mount, pid, net, uts
+kubectl node-shell <node> --no-ipc
+
 # Execute custom command
 kubectl node-shell <node> -- echo 123
 
