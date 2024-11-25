@@ -15,6 +15,11 @@ x_mode=0
 labels="${KUBECTL_NODE_SHELL_LABELS}"
 pod_running_timeout="${KUBECTL_NODE_SHELL_POD_RUNNING_TIMEOUT:-1m}"
 custom_image=""
+use_ipc=true
+use_mount=true
+use_pid=true
+use_net=true
+use_uts=true
 
 if [ -t 0 ]; then
   tty=true
@@ -71,6 +76,26 @@ while [ $# -gt 0 ]; do
     shift
     shift
     ;;
+  --no-ipc)
+    use_ipc=false
+    shift
+    ;;
+  --no-mount)
+    use_mount=false
+    shift
+    ;;
+  --no-pid)
+    use_pid=false
+    shift
+    ;;
+  --no-net)
+    use_net=false
+    shift
+    ;;
+  --no-uts)
+    use_uts=false
+    shift
+    ;;
   --)
     shift
     break
@@ -116,7 +141,24 @@ else # If the OS isn't windows, assume linux
   image="${custom_image:-${KUBECTL_NODE_SHELL_IMAGE:-$default_image}}"
   name="nsenter"
   pod="${name}-$(env LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 6)"
-  cmd_start='"nsenter", "--target", "1", "--mount", "--uts", "--ipc", "--net", "--pid"'
+  cmd_start='"nsenter", "--target", "1"'
+  # , "--mount", "--uts", "--ipc", "--net", "--pid"
+  if [ "$use_mount" = true ]; then
+    cmd_start="${cmd_start}, \"--mount\""
+  fi
+  if [ "$use_uts" = true ]; then
+    cmd_start="${cmd_start}, \"--uts\""
+  fi
+  if [ "$use_ipc" = true ]; then
+    cmd_start="${cmd_start}, \"--ipc\""
+  fi
+  if [ "$use_net" = true ]; then
+    cmd_start="${cmd_start}, \"--net\""
+  fi
+  if [ "$use_pid" = true ]; then
+    cmd_start="${cmd_start}, \"--pid\""
+  fi
+
   cmd_arg_prefix=', "--"'
   cmd_default=', "bash", "-l"'
   security_context='{"privileged":true}'
