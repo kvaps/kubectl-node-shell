@@ -11,7 +11,7 @@ container_cpu="${KUBECTL_NODE_SHELL_POD_CPU:-100m}"
 container_memory="${KUBECTL_NODE_SHELL_POD_MEMORY:-256Mi}"
 volumes="[]"
 volume_mounts="[]"
-x_mode=0
+x_mode=false
 labels="${KUBECTL_NODE_SHELL_LABELS}"
 pod_running_timeout="${KUBECTL_NODE_SHELL_POD_RUNNING_TIMEOUT:-1m}"
 image_pull_secret_name="${KUBECTL_NODE_SHELL_IMAGE_PULL_SECRET_NAME}"
@@ -73,7 +73,7 @@ while [ $# -gt 0 ]; do
     shift
     ;;
   -x)
-    x_mode=1
+    x_mode=true
     volumes=$(echo "$volumes" | jq '. += [{"hostPath": {"path": "/", "type": ""}, "name": "host-root"}]')
     volume_mounts=$(echo "$volume_mounts" | jq '. += [{"mountPath":"/host","name":"host-root"}]')
     shift
@@ -173,7 +173,7 @@ fi
 
 # Build the container command
 if [ $# -gt 0 ]; then
-  if [ "$x_mode" -eq 1 ]; then
+  if [ "$x_mode" = true ]; then
     cmd='['
   else
     cmd="[ $cmd_start $cmd_arg_prefix,"
@@ -188,7 +188,7 @@ if [ $# -gt 0 ]; then
   done
   cmd="$cmd ]"
 else
-  if [ "$x_mode" = 1 ]; then
+  if [ "$x_mode" = true ]; then
     cmd='null'
   else
     cmd="[ $cmd_start $cmd_default ]"
@@ -213,8 +213,9 @@ cat <<EOT
 {
   "spec": {
     "nodeName": "$node",
-    "hostPID": true,
-    "hostNetwork": true,
+    "hostPID": $use_pid,
+    "hostIPC": $use_ipc,
+    "hostNetwork": $use_net,
     "imagePullSecrets": $image_pull_secrets,
     "containers": [
       {
