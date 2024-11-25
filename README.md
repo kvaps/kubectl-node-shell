@@ -89,3 +89,51 @@ nsenter -t 2152 -n
 ```
 
 *You need to be able to start privileged containers for that.*
+
+## Mounting External CSI Volumes
+
+You can mount volumes from your CSI storage layer using the `-m` flag. This allows you to move data to/from node devices seamlessly. The PVC will be mounted at `/opt-pvc`. This is useful for failover in minimal systems that do not have a built in shell (eg. Talos). 
+Here is an example of how you can retrieve zfs/lvm data from a volume on a failed CSI node and put it back in your distributed storage layer:
+
+```bash
+k node-shell -n <namespace> -x <node_with_data> -m <pvc_name>
+
+# install rsync
+apk add rsync
+
+# Add lvm/zfs libs
+# ZFS
+mount -o bind /host/dev /dev
+mount -o bind /host/usr/local /usr/local
+touch /lib/libuuid.so.1
+mount -o bind /host/lib/libuuid.so.1 /lib/libuuid.so.1
+touch /lib/libuuid.so.1.3.0
+mount -o bind /host/lib/libuuid.so.1.3.0 /lib/libuuid.so.1.3.0
+touch /lib/libblkid.so.1
+mount -o bind /host/lib/libblkid.so.1 /lib/libblkid.so.1
+touch /lib/libblkid.so.1.1.0
+mount -o bind /host/lib/libblkid.so.1.1.0 /lib/libblkid.so.1.1.0
+#LVM
+touch /usr/lib/libaio.so.1
+mount -o bind /host/usr/lib/libaio.so.1.0.2 /usr/lib/libaio.so.1
+touch /usr/lib/libudev.so.1
+mount -o bind /host/usr/lib/libudev.so.1 /usr/lib/libudev.so.1
+export PATH=$PATH:/host/sbin
+mkdir /lib/modules
+mount -o bind /host/lib/modules /lib/modules
+
+# look for data to recover
+zfs list
+NAME                                                     USED  AVAIL  REFER  MOUNTPOINT
+hdd-1                                                   15.9T  7.52T    96K  /hdd-1
+hdd-1/SOME-OLD-PVC-FROM-PREVIOUS-NODE-INSTALL            361G  7.52T   361G  -                  -
+
+# mount the failed volume
+zfs set mountpoint=/mnt hdd-1/SOME-OLD-PVC-FROM-PREVIOUS-NODE-INSTALL
+zfs mount /hdd-1/SOME-OLD-PVC-FROM-PREVIOUS-NODE-INSTALL
+
+# recover the data : copy it to the mounted CSI volume
+rsync -avh --info=progress2 /mnt/ /opt-pvc/
+```
+
+the above exemple assumes `pvc_name` already exists in `namespace`. *You need to be able to start privileged containers.*
